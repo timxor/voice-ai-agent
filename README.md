@@ -15,3 +15,16 @@ poetry run start
 
 http://127.0.0.1:8000
 ```
+
+
+### voice agents api example
+
+``` 
+python voice_agents_api_example.py
+```
+
+### agents api example
+
+``` 
+python agents_api_example.py
+```
