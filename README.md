@@ -3,6 +3,20 @@
 Voice AI Agent that handles Twilio calls
 
 
+
+
+## Call the Voice AI Agent
+
+
+Try calling it and scheduling an appointment, the number is +1 (872) 224-3989
+
+
+## Requirements
+
+https://assort.notion.site/Assort-Health-Take-Home-Assignment-1c20b294614648bab39b1d4dafd6a40d
+
+
+
 ## Quick Start
 
 ```
