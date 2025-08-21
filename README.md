@@ -1,20 +1,21 @@
 # voice-ai-agent
 
-Voice AI Agent that handles Twilio calls
+A **Realtime Voice AI Agent** that you can call and interact with at:
+<a href="tel:+18722243989"><strong>+1 (872) 224-3989</strong></a>
 
+This project demonstrates how to build a production-ready **conversational AI system** that integrates telephony with a real-time LLM voice agent. It showcases end-to-end voice interaction, structured data collection, external API integration, and simulated scheduling workflows—making it a strong example of applied AI/voice engineering.
 
+## Summary
 
+The Voice AI Agent enables patients to call a phone number and interact with an AI assistant capable of gathering intake information for a healthcare appointment.  
+The agent conducts a natural conversation, validates critical details, and finalizes next steps—all without human intervention.  
 
-## Call the Voice AI Agent
-
-
-Try calling it and scheduling an appointment, the number is +1 (872) 224-3989
-
-
-## Requirements
-
-https://assort.notion.site/Assort-Health-Take-Home-Assignment-1c20b294614648bab39b1d4dafd6a40d
-
+**Key Features:**  
+- Real-time two-way voice interaction powered by AI  
+- Integration with Twilio for telephony  
+- External API usage for address validation  
+- Structured data collection with in-memory storage  
+- Simulation of provider scheduling and availability  
 
 
 ## Quick Start
