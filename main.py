@@ -21,7 +21,7 @@ PORT = int(os.getenv("PORT", 8080))
 
 # OpenAI API
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-VOICE = os.getenv("VOICE", "onyx")
+VOICE = os.getenv("VOICE", "alloy")
 
 # Geoapify Address API
 GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY")
