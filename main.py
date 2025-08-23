@@ -316,6 +316,7 @@ async def initialize_session(openai_ws, stream_sid: Optional[str] = None):
             "description": "Persist one or more collected intake fields into the server-side call state.",
             "parameters": {
                 "type": "object",
+                "properties": {},
                 "additionalProperties": True,
             },
         },
@@ -356,7 +357,7 @@ async def initialize_session(openai_ws, stream_sid: Optional[str] = None):
         "session": {
             "turn_detection": {"type": "server_vad"},
             "input_audio_format": "g711_ulaw",
-            "output_audio_format": "g711_ulaw",
+            "output_audio_format": "pcm16",
             "voice": VOICE,
             "instructions": SYSTEM_MESSAGE,
             "modalities": ["text", "audio"],
