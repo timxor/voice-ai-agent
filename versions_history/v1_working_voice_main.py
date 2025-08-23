@@ -21,10 +21,7 @@ SYSTEM_MESSAGE = (
     "Always stay positive, but work in a joke when appropriate."
 )
 
-# VOICE = 'alloy' # meh
-
-# a professional, authoritative tone
-VOICE = 'onyx'
+VOICE = 'alloy'
 
 LOG_EVENT_TYPES = [
     'error', 'response.content.done', 'rate_limits.updated',
@@ -84,7 +81,7 @@ async def handle_media_stream(websocket: WebSocket):
         last_assistant_item = None
         mark_queue = []
         response_start_timestamp_twilio = None
-        
+
         async def receive_from_twilio():
             """Receive audio data from Twilio and send it to the OpenAI Realtime API."""
             nonlocal stream_sid, latest_media_timestamp

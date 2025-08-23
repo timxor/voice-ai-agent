@@ -24,6 +24,14 @@ The agent conducts a natural conversation, validates critical details, and final
 git clone https://github.com/timxor/voice-ai-agent.git
 cd voice-ai-agent
 
+
+python -m venv env
+source env/bin/activate
+pip install -r requirements.txt
+
+python main.py
+
+
 cp env.dev.example > .env
 
 
@@ -35,13 +43,6 @@ RESEND_API_KEY=re_********************************
 RESEND_FROM=you@yourdomain.com
 GEOAPIFY_API_KEY=your_api_key
 
-
-python3 -m venv env
-source env/bin/activate
-pip install -r requirements.txt
-
-# run app
-python main.py
 
 # server and websocket running at:
 http://127.0.0.1:8080
