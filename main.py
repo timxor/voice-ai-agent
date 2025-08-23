@@ -464,8 +464,8 @@ async def handle_media_stream(websocket: WebSocket):
 
                     # Audio back to Twilio
                     if t == "response.audio.delta" and "delta" in response:
-                        audio_payload = base64.b64encode(base64.b64decode(response["delta"]))\
-                            .decode("utf-8")
+                        # Direct pass-through of audio data from OpenAI to Twilio
+                        audio_payload = response["delta"]
                         await websocket.send_json({
                             "event": "media",
                             "streamSid": stream_sid,
