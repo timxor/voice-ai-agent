@@ -357,7 +357,7 @@ async def initialize_session(openai_ws, stream_sid: Optional[str] = None):
         "session": {
             "turn_detection": {"type": "server_vad"},
             "input_audio_format": "g711_ulaw",
-            "output_audio_format": "pcm16",
+            "output_audio_format": "g711_ulaw",
             "voice": VOICE,
             "instructions": SYSTEM_MESSAGE,
             "modalities": ["text", "audio"],
@@ -465,8 +465,8 @@ async def handle_media_stream(websocket: WebSocket):
 
                     # Audio back to Twilio
                     if t == "response.audio.delta" and "delta" in response:
-                        # Direct pass-through of audio data from OpenAI to Twilio
-                        audio_payload = response["delta"]
+                        # Apply double base64 encoding for Twilio compatibility
+                        audio_payload = base64.b64encode(base64.b64decode(response["delta"])).decode("utf-8")
                         await websocket.send_json({
                             "event": "media",
                             "streamSid": stream_sid,
