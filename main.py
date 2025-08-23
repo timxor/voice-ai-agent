@@ -1,6 +1,7 @@
-# file: v2.2_main.py
+# file: main.py
 #
-##
+# Voice AI Agent with Twilio Integration
+# Fixed audio codec issue - uses direct pass-through for OpenAI Realtime API audio
 #
 # Quick Start:
 #
@@ -8,9 +9,8 @@
 # source env/bin/activate
 # pip install -r requirements.txt
 #
-# python v2.2_main.py
+# python main.py
 #
-##
 
 import os
 import json
