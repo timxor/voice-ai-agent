@@ -62,14 +62,7 @@ LOG_EVENT_TYPES = [
     'error', 'response.content.done', 'rate_limits.updated',
     'response.done', 'input_audio_buffer.committed',
     'input_audio_buffer.speech_stopped', 'input_audio_buffer.speech_started',
-    'session.created', 'response.output_text.delta', 'if etype == "error":
-                msg = evt.get("error", {}).get("message") or evt.get("message", "")
-                if ("Supported values are:" in msg or "Invalid value" in msg) and pending_voice != "alloy":
-                    pending_voice = "alloy"
-                    await send_session_update(openai_ws, pending_voice)
-                continue
-
-response.audio.delta'
+    'session.created', 'response.output_text.delta', 'response.audio.delta'
 ]
 SHOW_TIMING_MATH = False
 
@@ -105,7 +98,7 @@ async def root_incoming(request: Request):
 
 @app.api_route("/incoming-call", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
-    # Return TwiML to connect the call to the WebSocket media stream.
+    """Return TwiML to connect the call to the WebSocket media stream."""
     response = VoiceResponse()
     response.say("Hi, this is Eevee. How can I help you schedule your doctors appointment today?")
     host = request.url.hostname
@@ -120,7 +113,7 @@ async def handle_incoming_call(request: Request):
 # =============================
 @app.websocket("/media-stream")
 async def handle_media_stream(websocket: WebSocket):
-    # Bridge audio between Twilio and OpenAI, and capture structured patient data.
+    """Bridge audio between Twilio and OpenAI, and capture structured patient data."""
     print("Client connected")
     await websocket.accept()
 
@@ -136,7 +129,7 @@ async def handle_media_stream(websocket: WebSocket):
     patient_data_captured = False
 
     async def finalize_and_close():
-        # Close the stream after completion.
+        """Close the stream after completion."""
         try:
             await websocket.send_json({"event": "stop", "streamSid": stream_sid})
         except Exception:
@@ -197,10 +190,6 @@ async def handle_media_stream(websocket: WebSocket):
                 nonlocal output_text_buffer, patient_data_captured
                 try:
                     async for openai_message in openai_ws:
-            try:
-                evt = json.loads(message)
-            except Exception:
-                continue
                         response = json.loads(openai_message)
 
                         # Log selected event types
@@ -297,7 +286,7 @@ async def handle_media_stream(websocket: WebSocket):
 # Helper functions
 # =============================
 def save_patient_record(record: dict) -> int:
-    # Auto-increment and persist a patient record in memory.
+    """Auto-increment and persist a patient record in memory."""
     global NEXT_ID
     pid = NEXT_ID
     PATIENT_DB[pid] = {
@@ -316,7 +305,7 @@ async def handle_speech_started_event(openai_ws, websocket, stream_sid,
                                       response_start_timestamp_twilio,
                                       last_assistant_item,
                                       mark_queue):
-    # Truncate current assistant audio when caller starts speaking (barge-in).
+    """Truncate current assistant audio when caller starts speaking (barge-in)."""
     if mark_queue and response_start_timestamp_twilio is not None:
         elapsed_time = latest_media_timestamp - response_start_timestamp_twilio
         truncate_event = {
@@ -349,7 +338,7 @@ async def send_mark(connection, stream_sid):
 
 
 async def send_initial_conversation_item(openai_ws):
-    # Have the AI speak first with a short greeting and intake instruction.
+    """Have the AI speak first with a short greeting and intake instruction."""
     initial_conversation_item = {
         "type": "conversation.item.create",
         "item": {
@@ -371,7 +360,7 @@ async def send_initial_conversation_item(openai_ws):
 
 
 async def initialize_session(openai_ws):
-    # Initialize Realtime session with voice and our intake system prompt.
+    """Initialize Realtime session with voice and our intake system prompt."""
     session_update = {
         "type": "session.update",
         "session": {
@@ -397,33 +386,3 @@ async def initialize_session(openai_ws):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=HOST, port=PORT)
-
-# === Session format/voice management helpers ===
-async def send_session_update(openai_ws, voice_value: str):
-    desired = {
-        "type": "session.update",
-        "session": {
-            "input_audio_format": "g711_ulaw",
-            "output_audio_format": "g711_ulaw",
-            "voice": voice_value,
-        }
-    }
-    print("[OpenAI] Sending session.update", desired)
-    await openai_ws.send(json.dumps(desired))
-
-async def send_greeting_when_ready(openai_ws, session_ready_event: asyncio.Event):
-    session_created = asyncio.Event()
-    session_ready = asyncio.Event()
-    pending_voice = VOICE
-
-    try:
-        await asyncio.wait_for(session_ready_event.wait(), timeout=2.0)
-    except asyncio.TimeoutError:
-        pass
-    await openai_ws.send(json.dumps({
-        "type": "response.create",
-        "response": {
-            "modalities": ["audio"],
-            "instructions": "Hi, this is Eevee. How can I help you schedule your doctors appointment today?",
-        }
-    }))
