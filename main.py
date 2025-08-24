@@ -279,11 +279,11 @@ async def root_incoming(request: Request):
 @app.api_route("/incoming-call", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
     response = VoiceResponse()
-    response.say(
-        "Please wait while we connect your call to Tim's AI voice assistant.",
-    )
-    response.pause(length=1)
-    response.say("Okay, you can start talking!")
+    # response.say(
+    #     "Please wait while we connect your call to Tim's AI voice assistant.",
+    # )
+    # response.pause(length=1)
+    # response.say("Okay, you can start talking!")
     host = request.url.hostname
     connect = Connect()
     connect.stream(url=f"wss://{host}/media-stream")
@@ -316,7 +316,25 @@ async def initialize_session(openai_ws, stream_sid: Optional[str] = None):
             "description": "Persist one or more collected intake fields into the server-side call state.",
             "parameters": {
                 "type": "object",
-                "additionalProperties": True,
+                "title": "UpdateIntakeStateArgs",
+                "description": "Any subset of intake fields to persist into the server-side call state.",
+                "properties": {
+                  "full_name": { "type": "string", "description": "Patient full legal name." },
+                  "date_of_birth": { "type": "string", "description": "YYYY-MM-DD." },
+                  "phone": { "type": "string", "description": "E.164 preferred, but free-form accepted." },
+                  "email": { "type": "string", "format": "email" },
+                  "address": { "type": "string", "description": "Free-form street address." },
+                  "insurance_payer_name": { "type": "string" },
+                  "insurance_payer_id": { "type": "string" },
+                  "referral_physician": { "type": "string", "description": "Doctor or clinic name, if any." },
+                  "chief_complaint": { "type": "string", "description": "Reason for visit in patient's words." },
+                  "metadata": {
+                    "type": "object",
+                    "description": "Optional structured extras your app may use.",
+                    "additionalProperties": True
+                  }
+                },
+                "additionalProperties": False
             },
         },
         {
@@ -380,7 +398,7 @@ async def send_initial_conversation_item(openai_ws):
                 {
                     "type": "input_text",
                     "text": (
-                        "Greet the caller: 'Hello, this is Doris! I will help schedule your doctors visit. "
+                        "Greet the caller: 'Hi this is Doris, I will help schedule your doctors visit. "
                         "I will collect a few details like your name, date of birth, insurance, address, and contact info, "
                         "then offer available appointment times. Let's start with your full name."
                     ),
@@ -467,10 +485,6 @@ async def handle_media_stream(websocket: WebSocket):
 
                         # direct pass-through of audio data from openai to twilio
                         audio_payload = response["delta"]
-
-                        # bug - double base64 encoded
-                        # audio_payload = base64.b64encode(base64.b64decode(response["delta"]))\
-                        #     .decode("utf-8")
 
                         await websocket.send_json({
                             "event": "media",
