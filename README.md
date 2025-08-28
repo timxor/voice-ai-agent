@@ -3,6 +3,8 @@
 A **Realtime Voice AI Agent** that you can call and interact with at:
 <a href="tel:+18722243989"><strong>+1 (872) 224-3989</strong></a>
 
+[https://voice.timsiwula.com](https://voice.timsiwula.com)
+
 This project demonstrates how to build a production-ready **conversational AI system** that integrates telephony with a real-time LLM voice agent. It showcases end-to-end voice interaction, structured data collection, external API integration, and simulated scheduling workflows—making it a strong example of applied AI/voice engineering.
 
 ## Summary
@@ -40,7 +42,7 @@ cp env.dev.example > .env
 
 OPENAI_API_KEY=openai_****************************
 RESEND_API_KEY=re_********************************
-RESEND_FROM=you@yourdomain.com
+RESEND_FROM=updates@updates.timsiwula.com
 GEOAPIFY_API_KEY=your_api_key
 
 

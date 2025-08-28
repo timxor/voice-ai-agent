@@ -270,7 +270,7 @@ app = FastAPI()
 
 @app.get("/", response_class=JSONResponse)
 async def index_page():
-    return {"message": "Tim's Twilio Media Stream Server is running!"}
+    return {"message": "Tim's Realtime Voice AI Agent that you can call and interact with at: +1 (872) 224-3989 -- Server is running."}
 
 @app.post("/", response_class=HTMLResponse)
 async def root_incoming(request: Request):
