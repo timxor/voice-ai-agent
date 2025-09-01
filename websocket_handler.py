@@ -29,8 +29,6 @@ class WebSocketHandler:
             client = AsyncOpenAI(api_key=OPENAI_API_KEY)
             async with client.beta.realtime.connect(model=OPENAI_PREVIEW_MODEL) as openai_ws:
                 await OpenAIService.initialize_session(openai_ws)
-                response = await openai_ws.receive()
-                print(f"Received session response: {response}", flush=True)
 
                 last_assistant_item: Optional[str] = None
                 stream_sid: Optional[str] = None
