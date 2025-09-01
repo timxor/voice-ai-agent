@@ -64,5 +64,6 @@ async def safe_task(coro):
     try:
         await coro
     except Exception as e:
+        pass
         # Print the full exception to get more details
         # print(f"Task error: {e}", flush=True)

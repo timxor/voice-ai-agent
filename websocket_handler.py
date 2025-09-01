@@ -71,7 +71,7 @@ class WebSocketHandler:
                                     mark_queue.pop(0)
 
                     except WebSocketDisconnect:
-                        # print("Twilio WebSocket disconnected")
+                        print("Twilio WebSocket disconnected")
 
                 async def send_to_twilio():
                     nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio, state
@@ -110,15 +110,19 @@ class WebSocketHandler:
 
                             elif t == "session.created":
                                 # print(f"Session created at {latest_media_timestamp}")
+                                pass
 
                             elif t == "input_audio_buffer.speech_stopped":
                                 # print(f"Speech stopped detected at {latest_media_timestamp}")
+                                pass
 
                             elif t == "response.created":
                                 # print(f"Response being created at {latest_media_timestamp}")
+                                pass
 
                     except Exception as e:
                         # print(f"Error in send_to_twilio: {e}", flush=True)
+                        pass
 
                 async def handle_speech_started_event():
                     nonlocal response_start_timestamp_twilio, last_assistant_item

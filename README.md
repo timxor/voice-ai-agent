@@ -30,7 +30,7 @@ The agent conducts a natural conversation, validates critical details, and final
 git clone https://github.com/timxor/voice-ai-agent.git
 cd voice-ai-agent
 
-python -m venv .env
+python -m venv .venv
 source .venv/bin/activate
 python -m pip install -U -r requirements.txt
 ```
