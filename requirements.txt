@@ -1,5 +1,6 @@
 fastapi==0.115.0
 httpx==0.28.1
+openai==1.102.0
 python-dotenv==1.0.1
 resend==2.13.0
 twilio==9.3.2
