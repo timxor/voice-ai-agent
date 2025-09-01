@@ -1,5 +1,6 @@
 # file: main.py
-# version: v4.1
+# version: v3.1 (robust Realtime event handling + Resend init)
+
 import os
 import json
 import asyncio
@@ -23,8 +24,6 @@ HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", 8080))
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_REALTIME_MODEL = "gpt-realtime"
-OPENAI_PREVIEW_MODEL = "gpt-4o-realtime-preview-2024-10-01"
 VOICE = "alloy"
 TEMPERATURE = 0.8
 if not OPENAI_API_KEY:
@@ -35,13 +34,14 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 RESEND_FROM = os.getenv("RESEND_FROM", "updates@updates.timsiwula.com")
 if not RESEND_API_KEY:
     raise ValueError("Missing RESEND_API_KEY. Please set it in the .env file.")
+# Explicitly initialize the Resend client
 resend.api_key = RESEND_API_KEY
 
-# Email recipients
+# Retrieve the comma-separated email list from the environment variable
 email_string = os.environ.get("EMAIL_RECIPIENTS", "")
 BOOKING_RECIPIENTS = [email.strip() for email in email_string.split(",") if email.strip()]
 
-# Optional: Geoapify
+# Optional: Geoapify for simple address validation
 GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY")
 
 REQUIRED_FIELDS = {
@@ -50,20 +50,19 @@ REQUIRED_FIELDS = {
     "insurance_payer_name": None,
     "insurance_payer_id": None,
     "has_referral": None,
-    "referring_physician": None,
+    "referring_physician": None,  # only if has_referral is True
     "chief_complaint": None,
     "address": None,
     "address_is_valid": None,
     "phone": None,
-    "email": None,
-    "appointment_slot": None,
+    "email": None,  # optional
+    "appointment_slot": None,  # {doctor, start, end}
 }
 
 SYSTEM_MESSAGE = (
-    "You are a medical intake voice agent for Doctors.\n"
-    "CRITICAL: Always acknowledge user responses immediately and proceed without pausing.\n"
+    "You are a medical intake voice agent for Assort Health.\n"
     "Your goals:\n"
-    "1) Collect: patient first name, last name and date of birth.\n"
+    "1) Collect: patient full name and date of birth.\n"
     "2) Collect insurance info: payer name and payer ID.\n"
     "3) Ask if they have a referral; if yes, capture the referring physician.\n"
     "4) Collect chief medical complaint / reason for visit.\n"
@@ -73,7 +72,7 @@ SYSTEM_MESSAGE = (
     "6) Collect contact info: phone (required) and email (optional).\n"
     "7) Offer best available providers and times. Use the `get_available_appointments` tool.\n"
     "8) The call is *not resolved* until all items are captured. Use short, respectful prompts.\n"
-    "When everything is gathered, call `finalize_appointment`.\n"
+    "When everything is gathered, summarize details and call `finalize_appointment`.\n"
 )
 
 LOG_EVENT_TYPES = [
@@ -91,11 +90,10 @@ LOG_EVENT_TYPES = [
     "response.create",
 ]
 
-# Twilio media stream specifics
-TWILIO_FRAME_MS = 20
-COMMIT_THRESHOLD_MS = 60
+SHOW_TIMING_MATH = False
 
 app = FastAPI()
+
 
 # =============================
 # In-memory state per stream/call
@@ -139,6 +137,7 @@ FAKE_PROVIDERS = [
     {"doctor": "Dr. Sarah Chen", "specialty": "Family Medicine"},
 ]
 
+# Note: make sure end times are realistic (was 2030 in your snippet by accident)
 FAKE_SLOTS = [
     {"start": "2025-08-22T09:00:00-05:00", "end": "2025-08-22T09:20:00-05:00"},
     {"start": "2025-08-22T10:40:00-05:00", "end": "2025-08-22T11:00:00-05:00"},
@@ -222,7 +221,12 @@ def send_confirmation_email(appointment: Dict[str, Any], state: IntakeState) -> 
         <strong>Start:</strong> {appointment.get('start')}<br/>
         <strong>End:</strong> {appointment.get('end')}</p>
         """
-        payload: Dict[str, Any] = {"from": RESEND_FROM, "to": BOOKING_RECIPIENTS, "subject": subject, "html": html}
+        payload: Dict[str, Any] = {
+            "from": RESEND_FROM,
+            "to": BOOKING_RECIPIENTS,
+            "subject": subject,
+            "html": html,
+        }
         resend.Emails.send(cast(Dict[str, Any], payload))
         return None
     except Exception as e:
@@ -248,12 +252,9 @@ async def root_incoming(request: Request):
 async def handle_incoming_call(request: Request):
     response = VoiceResponse()
     host = request.url.hostname
-    if "ngrok" in request.headers.get("host", ""):
-        host = request.headers["host"]
     connect = Connect()
     connect.stream(url=f"wss://{host}/media-stream")
     response.append(connect)
-    print(f"Using WebSocket URL: wss://{host}/media-stream", flush=True)
     return HTMLResponse(content=str(response), media_type="application/xml")
 
 
@@ -261,7 +262,7 @@ async def handle_incoming_call(request: Request):
 # Realtime Session & Tooling
 # =============================
 async def initialize_session(openai_ws, stream_sid: Optional[str] = None):
-    print(f"Initializing OpenAI session for stream_sid: {stream_sid}", flush=True)
+    print("Initializing OpenAI session for stream_sid:", stream_sid)
     tools = [
         {
             "type": "function",
@@ -294,16 +295,28 @@ async def initialize_session(openai_ws, stream_sid: Optional[str] = None):
                     "has_referral": {"type": "boolean", "description": "Whether the patient has a referral."},
                     "referring_physician": {"type": "string", "description": "Doctor or clinic name, if any."},
                     "chief_complaint": {"type": "string", "description": "Reason for visit in patient's words."},
-                    "metadata": {"type": "object", "description": "Optional structured extras.", "additionalProperties": True},
+                    "metadata": {
+                        "type": "object",
+                        "description": "Optional structured extras your app may use.",
+                        "additionalProperties": True,
+                    },
                 },
                 "additionalProperties": False,
             },
         },
-        {"type": "function", "name": "get_available_appointments", "description": "List slots.", "parameters": {"type": "object", "properties": {}}},
+        {
+            "type": "function",
+            "name": "get_available_appointments",
+            "description": "Return a list of available appointment slots with provider names.",
+            "parameters": {"type": "object", "properties": {}},
+        },
         {
             "type": "function",
             "name": "finalize_appointment",
-            "description": "Complete intake and send confirmations. Include {doctor,start,end}.",
+            "description": (
+                "Mark the intake as complete and trigger confirmation emails. Must include the chosen "
+                "appointment slot {doctor,start,end}."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -326,28 +339,26 @@ async def initialize_session(openai_ws, stream_sid: Optional[str] = None):
     session_update = {
         "type": "session.update",
         "session": {
-            "input_audio_format": "g711_ulaw",
-            "output_audio_format": "g711_ulaw",
             "turn_detection": {
                 "type": "server_vad",
                 "create_response": True,
                 "interrupt_response": True,
                 "threshold": 0.5,
-                "silence_duration_ms": 800,
+                "silence_duration_ms": 200,
                 "prefix_padding_ms": 300,
             },
+            "input_audio_format": "g711_ulaw",
+            "output_audio_format": "g711_ulaw",
             "voice": VOICE,
-            "instructions": SYSTEM_MESSAGE + "\n\nIMPORTANT: After the user provides information, "
-                                             "always acknowledge what you heard and proceed to the next question "
-                                             "or step. Never wait in silence after receiving user input.",
+            "instructions": SYSTEM_MESSAGE,
             "modalities": ["text", "audio"],
             "temperature": TEMPERATURE,
             "tools": tools,
         },
     }
-    print(f"Sending session update: {session_update}", flush=True)
     await openai_ws.send(session_update)
     await send_initial_conversation_item(openai_ws)
+    print("Session initialized and initial conversation item sent")
 
 
 async def send_initial_conversation_item(openai_ws):
@@ -360,20 +371,25 @@ async def send_initial_conversation_item(openai_ws):
                 {
                     "type": "input_text",
                     "text": (
-                        "Greet the caller: 'Let's schedule your doctor's visit."
+                        "Greet the caller: 'Hi this is Doris, I will help schedule your doctor's visit. "
+                        "I will collect a few details like your name, date of birth, insurance, address, and contact info, "
+                        "then offer available appointment times. Let's start with your full name.'"
                     ),
                 }
             ],
         },
     }
-    # print("Sending initial conversation item:", initial_conversation_item)
+    print("Sending initial conversation item:", initial_conversation_item)
     await openai_ws.send(initial_conversation_item)
     await openai_ws.send({"type": "response.create"})
-    # print("Initial conversation item and response.create sent")
+    print("Initial conversation item and response.create sent")
 
 
 async def send_function_result(openai_ws, call_id: str, result: Any):
-    payload = {"type": "conversation.item.create", "item": {"type": "function_result", "call_id": call_id, "output": result}}
+    payload = {
+        "type": "conversation.item.create",
+        "item": {"type": "function_result", "call_id": call_id, "output": result},
+    }
     await openai_ws.send(payload)
     await openai_ws.send({"type": "response.create"})
 
@@ -382,28 +398,42 @@ async def send_function_result(openai_ws, call_id: str, result: Any):
 # Helpers
 # =============================
 def _normalize_event_to_dict(event: Any) -> Dict[str, Any]:
+    """
+    Normalize any event coming from the OpenAI Realtime SDK (pydantic models),
+    raw dicts, or JSON strings into a plain dict.
+    """
+    # Common cases: dict already
     if isinstance(event, dict):
         return event
+
+    # Strings / bytes -> JSON
     if isinstance(event, (str, bytes, bytearray)):
         try:
-            return json.loads(event if isinstance(event, str) else event.decode())
+            return json.loads(event) if not isinstance(event, (bytes, bytearray)) else json.loads(event.decode())
         except Exception:
             return {"type": "unknown", "raw": repr(event)}
+
+    # Pydantic v2 models usually have model_dump()
     model_dump = getattr(event, "model_dump", None)
     if callable(model_dump):
         try:
             return model_dump()
         except Exception:
             pass
+
+    # Some SDK objects expose `.data`
     data_attr = getattr(event, "data", None)
     if isinstance(data_attr, dict):
         return data_attr
+
+    # Last resort: try `json()` or repr
     json_method = getattr(event, "json", None)
     if callable(json_method):
         try:
             return json.loads(event.json())
         except Exception:
             pass
+
     return {"type": "unknown", "raw": repr(event)}
 
 
@@ -417,13 +447,7 @@ def _safe_parse_arguments(args: Union[str, Dict[str, Any], None]) -> Dict[str, A
             return json.loads(args if isinstance(args, str) else args.decode())
         except Exception:
             return {}
-
-
-def get_callers_full_name_for_stream(stream_sid: Optional[str]) -> Optional[str]:
-    if not stream_sid:
-        return None
-    state = CALL_STATE.get(stream_sid)
-    return state.data.get("patient_name") if state else None
+    return {}
 
 
 # =============================
@@ -433,8 +457,7 @@ async def safe_task(coro):
     try:
         await coro
     except Exception as e:
-        # Print the full exception to get more details
-        print(f"Task error: {e}", flush=True)
+        print(f"Task error: {e}")
 
 
 # =============================
@@ -445,47 +468,42 @@ async def handle_media_stream(websocket: WebSocket):
     await websocket.accept()
     try:
         client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-        async with client.beta.realtime.connect(model=OPENAI_PREVIEW_MODEL) as openai_ws:
+        async with client.beta.realtime.connect(model="gpt-4o-realtime-preview-2024-10-01") as openai_ws:
             await initialize_session(openai_ws)
-            response = await openai_ws.receive()
-            print(f"Received session response: {response}", flush=True)
-            last_assistant_item: Optional[str] = None
+
             stream_sid: Optional[str] = None
             latest_media_timestamp = 0
+            last_assistant_item = None
             mark_queue: List[str] = []
             response_start_timestamp_twilio = None
             state: Optional[IntakeState] = None
-
-            # batching counters for committing
-            frames_since_commit = 0
-            ms_since_commit = 0
 
             async def receive_from_twilio():
                 nonlocal stream_sid, latest_media_timestamp, state
                 try:
                     async for message in websocket.iter_text():
                         data = json.loads(message)
-
                         if data.get("event") == "media":
                             try:
                                 latest_media_timestamp = int(data["media"]["timestamp"])
-                                print(f"Appending audio at timestamp {latest_media_timestamp}", flush=True)
-                                # append audio
-                                await openai_ws.send( {"type": "input_audio_buffer.append", "audio": data["media"]["payload"]} )
-
+                                await openai_ws.send(
+                                    {
+                                        "type": "input_audio_buffer.append",
+                                        "audio": data["media"]["payload"],
+                                    }
+                                )
+                                # It's safe to commit frequently with server VAD
+                                await openai_ws.send({"type": "input_audio_buffer.commit"})
                             except Exception as e:
-                                print("OpenAI WebSocket error (append)")
+                                print("OpenAI WebSocket error:", e)
                                 break
-
                         elif data.get("event") == "start":
                             stream_sid = data["start"]["streamSid"]
                             CALL_STATE[stream_sid] = state = IntakeState()
                             latest_media_timestamp = 0
-
                         elif data.get("event") == "mark":
                             if mark_queue:
                                 mark_queue.pop(0)
-
                 except WebSocketDisconnect:
                     print("Twilio WebSocket disconnected")
 
@@ -495,11 +513,11 @@ async def handle_media_stream(websocket: WebSocket):
                     async for event in openai_ws:
                         response = _normalize_event_to_dict(event)
                         t = response.get("type")
+                        if t:
+                            print("OpenAI event received:", t)
 
                         if t in LOG_EVENT_TYPES:
-                            if t == "error" and response.get("error", {}).get("code") == "input_audio_buffer_commit_empty":
-                                continue
-                            print("OpenAI event:", response, flush=True)
+                            print("OpenAI logged event:", t, response)
 
                         if t == "response.audio.delta" and "delta" in response:
                             if websocket.client_state != WebSocketState.CONNECTED:
@@ -531,9 +549,6 @@ async def handle_media_stream(websocket: WebSocket):
                                     state.update(address=address_text, address_is_valid=result.get("is_valid"))
                                 await send_function_result(openai_ws, call_id, result)
 
-                            # get the callers first name and last name / full_name
-                            # The caller’s name is stored as a single string in state.data["patient_name"].
-                            # There are no separate first_name or last_name fields persisted by default.
                             elif name == "update_intake_state":
                                 if state is not None:
                                     mapped = dict(args)
@@ -542,13 +557,6 @@ async def handle_media_stream(websocket: WebSocket):
                                     if "referral_physician" in mapped:
                                         mapped["referring_physician"] = mapped.pop("referral_physician")
                                     state.update(**mapped)
-
-                                    if "patient_name" in mapped:
-                                        # assign the caller’s first and last name to a variable called 'full_name'
-                                        full_name = mapped["patient_name"]
-                                        # print the callers full name
-                                        print(f"Caller full name: {full_name}")
-
                                 await send_function_result(
                                     openai_ws, call_id, {"ok": True, "state": state.data if state else {}}
                                 )
@@ -564,7 +572,9 @@ async def handle_media_stream(websocket: WebSocket):
                                 if state and state.is_complete():
                                     err = send_confirmation_email(appt, state)
                                     await send_function_result(
-                                        openai_ws, call_id, {"ok": err is None, "email_error": err, "state_complete": True}
+                                        openai_ws,
+                                        call_id,
+                                        {"ok": err is None, "email_error": err, "state_complete": True},
                                     )
                                 else:
                                     await send_function_result(
@@ -578,18 +588,12 @@ async def handle_media_stream(websocket: WebSocket):
                                             ],
                                         },
                                     )
-
+                        # Gracefully note session creation
                         elif t == "session.created":
-                            print(f"Session created at {latest_media_timestamp}")
-
-                        elif t == "input_audio_buffer.speech_stopped":
-                            print(f"Speech stopped detected at {latest_media_timestamp}")
-
-                        elif t == "response.created":
-                            print(f"Response being created at {latest_media_timestamp}")
+                            print("Realtime session established.")
 
                 except Exception as e:
-                    print(f"Error in send_to_twilio: {e}", flush=True)
+                    print("Error in send_to_twilio:", e)
 
             async def handle_speech_started_event():
                 nonlocal response_start_timestamp_twilio, last_assistant_item
@@ -611,7 +615,7 @@ async def handle_media_stream(websocket: WebSocket):
                 t.cancel()
 
     except Exception as e:
-        print(f"OpenAI bridge failed: {e}", flush=True)
+        print("OpenAI bridge failed:", e)
         try:
             await websocket.close()
         finally:
@@ -620,4 +624,5 @@ async def handle_media_stream(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host=HOST, port=PORT)

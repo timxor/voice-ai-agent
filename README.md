@@ -1,8 +1,11 @@
 # voice-ai-agent
 
 A **Realtime Voice AI Agent** that you can call and interact with at:
+
 <a href="tel:+18722243989"><strong>+1 (872) 224-3989</strong></a>
 
+
+Deployed endpoint:
 [https://voice.timsiwula.com](https://voice.timsiwula.com)
 
 This project demonstrates how to build a production-ready **conversational AI system** that integrates telephony with a real-time LLM voice agent. It showcases end-to-end voice interaction, structured data collection, external API integration, and simulated scheduling workflows—making it a strong example of applied AI/voice engineering.
@@ -26,24 +29,64 @@ The agent conducts a natural conversation, validates critical details, and final
 git clone https://github.com/timxor/voice-ai-agent.git
 cd voice-ai-agent
 
+python -m venv .env
+source .venv/bin/activate
+python -m pip install -U -r requirements.txt
 
-python -m venv env
-source env/bin/activate
-pip install -r requirements.txt
 
+# start server in terminal screen 1
 python main.py
 
+# expose server with ngrok in terminal screen 2
+ngrok http --url=timxor.ngrok.io 8080
 
 cp env.dev.example > .env
-
 
 # then open .env
 # and set your api keys:
 
 OPENAI_API_KEY=openai_****************************
-RESEND_API_KEY=re_********************************
+# or
+# export OPENAI_API_KEY=openai_****************************
+
+HOST=timxor.ngrok.io
+# or
+# export HOST=timxor.ngrok.io
+
+RESEND_API_KEY=resend_********************************
 RESEND_FROM=updates@updates.timsiwula.com
+
+# Recipients to email
+EMAIL_RECIPIENTS="siwulactim@gmail.com,cpliang.doris@gmail.com"
+
 GEOAPIFY_API_KEY=your_api_key
+```
+
+# Twilio configuration
+
+```
+My Twilio phone number: 872-335-4559
+
+My Twilio voice webhook: https://timxor.ngrok.io/incoming-call
+
+Twilio: Point your phone number’s Voice webhook to https://your.public.host/incoming-call.
+
+Twilio number voice configuration: https://console.twilio.com/us1/develop/phone-numbers/manage/incoming/PN3a1f292d0ae6099cbda251ad19817f19/configure
+
+# Ngrok configuration
+
+My Ngrok local development reverse proxy for the voice webhook: https://timxor.ngrok.io/incoming-call
+
+Start ngrok:
+```
+
+ngrok http --url=timxor.ngrok.io 8080
+
+```
+
+Verify ngrok redirect is working:
+[https://timxor.ngrok.io/incoming-call](https://timxor.ngrok.io/incoming-call)
+
 
 
 # server and websocket running at:
