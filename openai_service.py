@@ -11,7 +11,7 @@ class OpenAIService:
     @staticmethod
     async def initialize_session(openai_ws, stream_sid: Optional[str] = None):
         """Initialize an OpenAI realtime session with tools and configuration."""
-        print(f"Initializing OpenAI session for stream_sid: {stream_sid}", flush=True)
+        # print(f"Initializing OpenAI session for stream_sid: {stream_sid}", flush=True)
         tools = [
             {
                 "type": "function",
@@ -95,7 +95,7 @@ class OpenAIService:
                 "tools": tools,
             },
         }
-        print(f"Sending session update: {session_update}", flush=True)
+        # print(f"Sending session update: {session_update}", flush=True)
         await openai_ws.send(session_update)
         await OpenAIService.send_initial_conversation_item(openai_ws)
 

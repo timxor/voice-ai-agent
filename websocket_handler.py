@@ -29,8 +29,7 @@ class WebSocketHandler:
             client = AsyncOpenAI(api_key=OPENAI_API_KEY)
             async with client.beta.realtime.connect(model=OPENAI_PREVIEW_MODEL) as openai_ws:
                 await OpenAIService.initialize_session(openai_ws)
-                response = await openai_ws.receive()
-                print(f"Received session response: {response}", flush=True)
+                # print(f"Received session response: {response}", flush=True)
 
                 last_assistant_item: Optional[str] = None
                 stream_sid: Optional[str] = None
@@ -52,14 +51,14 @@ class WebSocketHandler:
                             if data.get("event") == "media":
                                 try:
                                     latest_media_timestamp = int(data["media"]["timestamp"])
-                                    print(f"Appending audio at timestamp {latest_media_timestamp}", flush=True)
+                                    # print(f"Appending audio at timestamp {latest_media_timestamp}", flush=True)
                                     # append audio
                                     await openai_ws.send({
                                         "type": "input_audio_buffer.append",
                                         "audio": data["media"]["payload"]
                                     })
                                 except Exception as e:
-                                    print("OpenAI WebSocket error (append)")
+                                    # print("OpenAI WebSocket error (append)")
                                     break
 
                             elif data.get("event") == "start":
@@ -72,7 +71,7 @@ class WebSocketHandler:
                                     mark_queue.pop(0)
 
                     except WebSocketDisconnect:
-                        print("Twilio WebSocket disconnected")
+                        # print("Twilio WebSocket disconnected")
 
                 async def send_to_twilio():
                     nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio, state
@@ -84,7 +83,7 @@ class WebSocketHandler:
                             if t in LOG_EVENT_TYPES:
                                 if t == "error" and response.get("error", {}).get("code") == "input_audio_buffer_commit_empty":
                                     continue
-                                print("OpenAI event:", response, flush=True)
+                                # print("OpenAI event:", response, flush=True)
 
                             if t == "response.audio.delta" and "delta" in response:
                                 if websocket.client_state != WebSocketState.CONNECTED:
@@ -110,16 +109,16 @@ class WebSocketHandler:
                                 )
 
                             elif t == "session.created":
-                                print(f"Session created at {latest_media_timestamp}")
+                                # print(f"Session created at {latest_media_timestamp}")
 
                             elif t == "input_audio_buffer.speech_stopped":
-                                print(f"Speech stopped detected at {latest_media_timestamp}")
+                                # print(f"Speech stopped detected at {latest_media_timestamp}")
 
                             elif t == "response.created":
-                                print(f"Response being created at {latest_media_timestamp}")
+                                # print(f"Response being created at {latest_media_timestamp}")
 
                     except Exception as e:
-                        print(f"Error in send_to_twilio: {e}", flush=True)
+                        # print(f"Error in send_to_twilio: {e}", flush=True)
 
                 async def handle_speech_started_event():
                     nonlocal response_start_timestamp_twilio, last_assistant_item
@@ -136,7 +135,7 @@ class WebSocketHandler:
                     t.cancel()
 
         except Exception as e:
-            print(f"OpenAI bridge failed: {e}", flush=True)
+            # print(f"OpenAI bridge failed: {e}", flush=True)
             try:
                 await websocket.close()
             finally:
@@ -180,7 +179,7 @@ class WebSocketHandler:
 
                 if "patient_name" in mapped:
                     full_name = mapped["patient_name"]
-                    print(f"Caller full name: {full_name}")
+                    # print(f"Caller full name: {full_name}")
 
             await OpenAIService.send_function_result(
                 openai_ws, call_id, {"ok": True, "state": state.data if state else {}}

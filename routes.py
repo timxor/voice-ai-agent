@@ -38,5 +38,5 @@ class Routes:
         connect = Connect()
         connect.stream(url=f"wss://{host}/media-stream")
         response.append(connect)
-        print(f"Using WebSocket URL: wss://{host}/media-stream", flush=True)
+        # print(f"Using WebSocket URL: wss://{host}/media-stream", flush=True)
         return HTMLResponse(content=str(response), media_type="application/xml")
