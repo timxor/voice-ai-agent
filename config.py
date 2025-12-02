@@ -17,8 +17,14 @@ PORT = int(os.getenv("PORT", 8080))
 # OpenAI Configuration
 # =============================
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# new production model released
 OPENAI_REALTIME_MODEL = "gpt-realtime"
-OPENAI_PREVIEW_MODEL = "gpt-4o-realtime-preview-2024-10-01"
+
+# orginal usage, deprecated as of 12/03/2025
+# OPENAI_PREVIEW_MODEL = "gpt-4o-realtime-preview-2024-10-01"
+
+
 VOICE = "alloy"
 TEMPERATURE = 0.8
 

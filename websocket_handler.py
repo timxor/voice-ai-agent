@@ -9,7 +9,7 @@ from fastapi.websockets import WebSocketDisconnect
 from starlette.websockets import WebSocketState
 from openai import AsyncOpenAI
 
-from config import OPENAI_API_KEY, OPENAI_PREVIEW_MODEL, LOG_EVENT_TYPES
+from config import OPENAI_API_KEY, OPENAI_REALTIME_MODEL, LOG_EVENT_TYPES
 from models import IntakeState, CALL_STATE
 from openai_service import OpenAIService
 from address_service import AddressService
@@ -27,7 +27,7 @@ class WebSocketHandler:
         await websocket.accept()
         try:
             client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-            async with client.beta.realtime.connect(model=OPENAI_PREVIEW_MODEL) as openai_ws:
+            async with client.beta.realtime.connect(model=OPENAI_REALTIME_MODEL) as openai_ws:
                 await OpenAIService.initialize_session(openai_ws)
                 # print(f"Received session response: {response}", flush=True)
 
