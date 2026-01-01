@@ -3,20 +3,21 @@ name: Create Release Archive
 on:
   release:
     types:  [published]
-    
-permissions:
-  contents:  write
+  workflow_dispatch:
 
-jobs: 
+permissions:
+  contents: write
+
+jobs:
   build-and-upload:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses:  actions/checkout@v4
 
       - name: Create zip of project
         run: |
-          zip -r voice-ai-agent. zip .  -x ". git/*" -x ". github/*" -x "__pycache__/*" -x "*. pyc" -x ". env"
+          zip -r voice-ai-agent.zip . -x ". git/*" -x ".github/*" -x "__pycache__/*" -x "*.pyc" -x ".env" -x ".venv/*"
 
       - name: Upload zip to release
         uses:  softprops/action-gh-release@v2
@@ -24,4 +25,3 @@ jobs:
           files:  voice-ai-agent.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
