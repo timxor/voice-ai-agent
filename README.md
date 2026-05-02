@@ -33,21 +33,23 @@ cd voice-ai-agent
 python -m venv .venv
 source .venv/bin/activate
 
+cp env.example .env
+
 python -m pip install -U -r requirements.txt
 python main.py
 ```
 
 ## Python version
 ```
-# python version should be 3.12.11 to match the .python-version file for pyenv
+# python version should be 3.14.4 to match the .python-version file for pyenv
 cat .python-version
 
-# download and set current version to 3.12.11
-pyenv install 3.12.11
-pyenv local 3.12.11
+# download and set current version to 3.14.4
+pyenv install 3.14.4
+pyenv local 3.14.4
 
 python --version
-# Python 3.12.11
+# Python 3.14.4
 ```
 
 ## Setup API keys
