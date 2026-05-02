@@ -32,13 +32,30 @@ cd voice-ai-agent
 
 python -m venv .venv
 source .venv/bin/activate
+
 python -m pip install -U -r requirements.txt
+python main.py
 ```
 
+## Python version
+```
+# python version should be 3.12.11 to match the .python-version file for pyenv
+cat .python-version
+
+# download and set current version to 3.12.11
+pyenv install 3.12.11
+pyenv local 3.12.11
+
+python --version
+# Python 3.12.11
+```
 
 ## Setup API keys
 ```
-cp env.dev.example > .env
+cp env.example .env
+
+cat env.example
+
 nano .env
 
 HOST=timxor.ngrok.io
