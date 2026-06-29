@@ -1,26 +1,27 @@
 # voice-ai-agent
 
-A **Realtime Voice AI Agent** that you can call and interact with at:
+A realtime voice AI scheduling agent built with Twilio Voice, OpenAI Realtime API, Python/FastAPI, WebSockets, DigitalOcean, and Resend.
 
-<a href="tel:+18722243989"><strong>+1 (872) 224-3989</strong></a>
-
-
-Deployed endpoint:
-[https://voice.timsiwula.com](https://voice.timsiwula.com)
-
-This project demonstrates how to build a production-ready **conversational AI system** that integrates telephony with a real-time LLM voice agent. It showcases end-to-end voice interaction, structured data collection, external API integration, and simulated scheduling workflows—making it a strong example of applied AI/voice engineering.
+> Demo phone number and deployed endpoint are currently disabled to avoid ongoing Twilio/cloud costs. The full implementation is available in this repository.
 
 ## Summary
 
-The Voice AI Agent enables patients to call a phone number and interact with an AI assistant capable of gathering intake information for a healthcare appointment.  
-The agent conducts a natural conversation, validates critical details, and finalizes next steps—all without human intervention.  
+This project demonstrates how to build a production-style conversational AI system that integrates telephony with a realtime LLM voice agent.
 
-**Key Features:**  
-- Real-time two-way voice interaction powered by AI  
-- Integration with Twilio for telephony  
-- External API usage for address validation  
-- Structured data collection with in-memory storage  
-- Simulation of provider scheduling and availability  
+The Voice AI Agent handles an inbound phone call end-to-end: Twilio webhook routing, realtime audio streaming, AI conversation handling, structured data collection, simulated scheduling logic, and appointment confirmation email delivery.
+
+It is designed to showcase applied voice AI engineering concepts including low-latency audio interaction, turn-taking, session state management, OpenAI function calling, external API integration, and reliable workflow completion.
+
+## Key Features
+
+- Realtime two-way voice interaction using Twilio Voice and OpenAI Realtime API
+- Python/FastAPI backend with WebSocket-based audio streaming
+- Structured intake data extraction using OpenAI function calling
+- Session-based call state management
+- Simulated provider availability and appointment scheduling workflow
+- Automated appointment confirmation emails via Resend API
+- Deployment-ready architecture using DigitalOcean
+- Practical handling of latency, interruptions, fallbacks, and end-to-end call completion
 
 
 ## Quick Start
